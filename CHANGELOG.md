@@ -4,6 +4,14 @@ All notable changes to fixxl are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and it adopts
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2026-08-10
+
+### Fixed
+
+- Plain mode now prints the refusal reason under each refused file (e.g.
+  "no space left on device", "unsupported legacy format"). Previously a
+  refused file showed as `0 rows refused` with no explanation.
+
 ## [0.1.1] - 2026-08-10
 
 ### Fixed

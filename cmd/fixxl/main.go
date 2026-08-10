@@ -119,6 +119,13 @@ func runPlain(dir, out string) {
 		}
 		fmt.Printf("  %s %-32s %12s rows  %-10s %s\n",
 			mark, j.Name, formatRows(j.Rows), j.Style, j.Verify)
+		if j.Refusal {
+			for _, a := range j.Audit {
+				if a.Kind == "err" {
+					fmt.Printf("      ↳ %s\n", a.Text)
+				}
+			}
+		}
 	}
 	fmt.Printf("\n%d converted · %d refused\n", ok, refused)
 }
