@@ -1,0 +1,15 @@
+Output assets/fixxl-preview.gif
+Set FontSize 13
+Set Height 84
+Set Width 110
+Set Padding 40
+Set Theme GruvboxDark 
+Type "fixxl demo --plain"
+Enter
+Sleep 2s
+Type "fixxl demo"
+Enter
+Sleep 3s
+Type "q"
+Enter
+Sleep 1s

@@ -1,0 +1,4 @@
+/bin/
+/dist/
+/.fixxl-out/
+.DS_Store
