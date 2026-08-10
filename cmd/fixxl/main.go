@@ -44,6 +44,27 @@ func main() {
 	if args := flag.Args(); len(args) > 0 {
 		dir = args[0]
 	}
+
+	// Go's flag package stops parsing at the first non-flag token, so
+	// `fixxl DIR -p -o DIR` leaves the tail as positional args. Re-scan the
+	// tail so flags after the directory still take effect.
+	for i := 0; i < len(flag.Args()); i++ {
+		a := flag.Args()[i]
+		switch {
+		case a == "-p" || a == "-plain" || a == "--plain" || a == "--p":
+			*plain = true
+		case a == "-h" || a == "-help" || a == "--help" || a == "--h":
+			*help = true
+		case strings.HasPrefix(a, "-out=") || strings.HasPrefix(a, "-o=") ||
+			strings.HasPrefix(a, "--out=") || strings.HasPrefix(a, "--o="):
+			*out = strings.SplitN(a, "=", 2)[1]
+		case a == "-o" || a == "-out" || a == "--out" || a == "--o":
+			if i+1 < len(flag.Args()) {
+				*out = flag.Args()[i+1]
+				i++
+			}
+		}
+	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "fixxl:", err)
