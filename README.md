@@ -112,6 +112,11 @@ CI: `.github/workflows/test.yml` (vet + test always, cross-build on PR) and
 `legacy.xls` the tool politely refuses — regenerate with
 `go run ./scripts/gen-examples`.
 
+## Docs
+
+- [Use cases](docs/USE_CASES.md) — real flows proven in UAT on consumer
+  spreadsheets (a 213 MB retail inventory file, batch archives)
+
 ## License
 
 MIT
