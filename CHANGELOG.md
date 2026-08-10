@@ -4,7 +4,13 @@ All notable changes to fixxl are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and it adopts
 [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.1.1] - 2026-08-10
+
+### Fixed
+
+- `fixxl DIR -p -o OUT` — flags placed after the directory argument are now
+  honored; previously they were treated as positional args and the flags-only
+  paths (plain output, custom out dir) were silently ignored
 
 ## [0.1.0] - 2026-08-10
 
