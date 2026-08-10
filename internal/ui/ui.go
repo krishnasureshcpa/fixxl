@@ -52,8 +52,11 @@ type Model struct {
 	height    int
 }
 
+// msgBuf bounds how many worker messages can queue ahead of the renderer.
+const msgBuf = 16
+
 // New builds a model for a directory.
-func New(dir string, outDir string) (tea.Model, error) {
+func New(dir string, outDir string) tea.Model {
 	m := Model{
 		dir: dir, out: outDir, themeDark: true, t0: time.Now(),
 		tips: []string{
@@ -63,9 +66,9 @@ func New(dir string, outDir string) (tea.Model, error) {
 			"An Excel-locked file still reads fine - fixxl clones the snapshot and moves on.",
 		},
 	}
-	m.ch = make(chan tea.Msg, 16)
+	m.ch = make(chan tea.Msg, msgBuf)
 	m.runNo = readRun()
-	return m, nil
+	return m
 }
 
 // ---- messages ----
@@ -81,35 +84,31 @@ func (m Model) Init() tea.Cmd {
 	return m.nextRound()
 }
 
+// worker scans and converts every file, always ending with exactly one
+// terminal message (endRun, wrong, or noFiles) and never closing the channel
+// itself; defer closes it after the final send so nothing is dropped.
 func (m *Model) worker() {
+	defer close(m.ch)
 	if err := os.MkdirAll(m.out, 0o755); err != nil {
 		m.ch <- wrong{err}
-		close(m.ch)
 		return
 	}
 	files, err := engine.Discover(m.dir, engine.Options{OutDir: m.out})
 	if err != nil {
 		m.ch <- wrong{err}
-		close(m.ch)
 		return
 	}
 	if len(files) == 0 {
 		m.ch <- noFiles{}
-		close(m.ch)
 		return
 	}
 	opts := engine.Options{OutDir: m.out}
 	m.ch <- filesFound{files}
 	for _, f := range files {
-		j, err := engine.Process(f, opts, time.Now())
-		if err != nil {
-			j = engine.Job{Name: filepath.Base(f), Refusal: true, Verify: "refused",
-				Audit: []engine.AuditLine{{Kind: "err", Text: err.Error()}}}
-		}
+		j := engine.Process(f, opts, time.Now())
 		m.ch <- workDone{j}
 	}
 	m.ch <- endRun{}
-	close(m.ch)
 }
 
 func (m Model) nextRound() tea.Cmd {
@@ -138,9 +137,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.nextRound()
 	case noFiles:
 		m.errMsg = "no target spreadsheet files in " + m.dir
+		m.done = true
 		return m, nil
 	case wrong:
 		m.errMsg = v.err.Error()
+		m.done = true
 		return m, nil
 	case endRun:
 		m.done = true
@@ -148,8 +149,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		writeRun(m.runNo)
 		return m, nil
 	}
+	// Channel closed without a terminal message: hold the last view rather
+	// than quitting mid-frame out from under the user.
 	if msg == nil {
-		return m, tea.Quit
+		return m, nil
 	}
 	return m, nil
 }
@@ -165,7 +168,7 @@ func (m Model) onKey(k string) (tea.Model, tea.Cmd) {
 			m.errMsg = ""
 			m.done = false
 			m.t0 = time.Now()
-			m.ch = make(chan tea.Msg, 16)
+			m.ch = make(chan tea.Msg, msgBuf)
 			go m.worker()
 			return m, m.nextRound()
 		}
@@ -185,26 +188,40 @@ func (m Model) p() palette {
 }
 
 // ==== run persistence ====
-func runFile() string {
+// Run numbers are a nicety, not a contract: if the config home is missing or
+// the file is unreadable we simply start at zero rather than crashing.
+
+func runFile() (string, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		return ""
+		return "", err
 	}
-	return filepath.Join(home, ".fixxl-run")
+	return filepath.Join(home, ".fixxl-run"), nil
 }
 
 func readRun() int {
-	b, err := os.ReadFile(runFile())
+	f, err := runFile()
 	if err != nil {
 		return 0
 	}
-	n, _ := strconv.Atoi(strings.TrimSpace(string(b)))
+	b, err := os.ReadFile(f)
+	if err != nil {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(string(b)))
+	if err != nil || n < 0 {
+		return 0
+	}
 	return n
 }
 
 func writeRun(n int) {
-	if f := runFile(); f != "" {
-		_ = os.WriteFile(f, []byte(strconv.Itoa(n)), 0o644)
+	f, err := runFile()
+	if err != nil {
+		return
+	}
+	if err := os.WriteFile(f, []byte(strconv.Itoa(n)), 0o644); err != nil {
+		return
 	}
 }
 

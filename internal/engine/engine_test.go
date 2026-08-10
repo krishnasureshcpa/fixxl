@@ -18,10 +18,7 @@ func TestCSVBecomesWorkbook(t *testing.T) {
 	}
 
 	o := Options{OutDir: outDir}
-	j, err := Process(csv, o, time.Now())
-	if err != nil {
-		t.Fatalf("Process: %v", err)
-	}
+	j := Process(csv, o, time.Now())
 	if j.Refusal {
 		t.Fatalf("expected ok job, got refusal: %+v", j.Audit)
 	}
@@ -48,10 +45,7 @@ func TestRefusedLegacyFormat(t *testing.T) {
 	if err := os.WriteFile(p, []byte("\xd0\xcf\x11\xe0 legacy bytes"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	j, err := Process(p, Options{}, time.Now())
-	if err != nil {
-		t.Fatalf("Process: %v", err)
-	}
+	j := Process(p, Options{}, time.Now())
 	if !j.Refusal {
 		t.Fatal("expected legacy .xls to be refused")
 	}

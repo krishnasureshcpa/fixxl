@@ -41,8 +41,26 @@ func truncate(s string, n int) string {
 	return s[:n-1] + "…"
 }
 
+// thou renders an integer with thousands separators: 213746773 -> 213,746,773.
 func thou(n int64) string {
-	return strconv.FormatInt(n, 10)
+	sign := ""
+	if n < 0 {
+		sign = "-"
+		n = -n
+	}
+	d := strconv.FormatInt(n, 10)
+	if len(d) <= 3 {
+		return sign + d
+	}
+	var b strings.Builder
+	b.WriteString(sign)
+	for i, r := range d {
+		if i > 0 && (len(d)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 func colored(hex, text string, pr palette) string {

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,18 +20,11 @@ import (
 )
 
 func main() {
-	// `fixxl demo` bypasses normal flag parsing so `-p` works after it.
-	for _, a := range os.Args[1:] {
-		if a == "demo" {
-			plain := false
-			for _, x := range os.Args[2:] {
-				if x == "-p" || x == "-plain" || x == "--plain" || x == "--p" {
-					plain = true
-				}
-			}
-			demo(plain)
-			return
-		}
+	// `fixxl demo` is a subcommand: demos never touch real files.
+	args := os.Args[1:]
+	if len(args) > 0 && args[0] == "demo" {
+		demo(demoPlain(args[1:]))
+		return
 	}
 
 	out := flag.String("out", ".fixxl-out", "clone output directory")
@@ -51,7 +46,8 @@ func main() {
 	}
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		abs = dir
+		fmt.Fprintln(os.Stderr, "fixxl:", err)
+		os.Exit(1)
 	}
 
 	if *plain {
@@ -59,15 +55,21 @@ func main() {
 		return
 	}
 
-	model, err := ui.New(abs, *out)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "fixxl:", err)
-		os.Exit(1)
-	}
+	model := ui.New(abs, *out)
 	if _, err := tea.NewProgram(model, tea.WithAltScreen(), tea.WithMouseCellMotion()).Run(); err != nil {
 		fmt.Fprintln(os.Stderr, "fixxl:", err)
 		os.Exit(1)
 	}
+}
+
+// demoPlain reports whether demo should render plain output.
+func demoPlain(args []string) bool {
+	for _, a := range args {
+		if a == "-p" || a == "-plain" || a == "--plain" || a == "--p" {
+			return true
+		}
+	}
+	return false
 }
 
 func runPlain(dir, out string) {
@@ -84,25 +86,46 @@ func runPlain(dir, out string) {
 	fmt.Printf("fixxl · %d file(s) · clone → %s\n\n", len(files), out)
 	ok, refused := 0, 0
 	for _, f := range files {
-		j, err := engine.Process(f, opts, now())
-		if err != nil {
-			j = engine.Job{Name: filepath.Base(f), Refusal: true, Verify: "refused",
-				Audit: []engine.AuditLine{{Kind: "err", Text: err.Error()}}}
-		}
-		mark := "✓"
+		j := engine.Process(f, opts, now())
 		if j.Refusal {
-			mark = "✕"
 			refused++
 		} else {
 			ok++
 		}
-		fmt.Printf("  %s %-28s %5d rows  %-10s %s\n",
-			mark, j.Name, j.Rows, j.Style, j.Verify)
+		mark := "✓"
+		if j.Refusal {
+			mark = "✕"
+		}
+		fmt.Printf("  %s %-32s %12s rows  %-10s %s\n",
+			mark, j.Name, formatRows(j.Rows), j.Style, j.Verify)
 	}
 	fmt.Printf("\n%d converted · %d refused\n", ok, refused)
 }
 
 func now() time.Time { return time.Now() }
+
+// formatRows renders a row count with thousands separators for the HTML-free
+// plain report.
+func formatRows(n int64) string {
+	sign := ""
+	if n < 0 {
+		sign = "-"
+		n = -n
+	}
+	d := strconv.FormatInt(n, 10)
+	if len(d) <= 3 {
+		return sign + d
+	}
+	var b strings.Builder
+	b.WriteString(sign)
+	for i, r := range d {
+		if i > 0 && (len(d)-i)%3 == 0 {
+			b.WriteByte(',')
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
+}
 
 func usage() {
 	fmt.Print(`fixxl  scan · clone · repair

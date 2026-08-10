@@ -39,15 +39,27 @@ skipping, never writing to the source file.
 # curl (macOS / linux)
 curl -fsSL https://raw.githubusercontent.com/krishnasureshcpa/fixxl/main/scripts/install.sh | sh
 
-# homebrew (once the formula lands)
-brew install fixxl
+# homebrew (once current release has published checksums)
+brew install krishnasureshcpa/fixxl/fixxl
 
 # go (anywhere)
 go install github.com/krishnasureshcpa/fixxl/cmd/fixxl@latest
 ```
 
-Windows: `npx fixxl` is planned — or grab the
-[release](https://github.com/krishnasureshcpa/fixxl/releases/latest) binary.
+PowerShell (Windows):
+
+```powershell
+irm https://raw.githubusercontent.com/krishnasureshcpa/fixxl/main/scripts/install.ps1 | iex
+```
+
+Or use the npm shim — no binary management at all:
+
+```sh
+npx fixxl demo
+```
+
+All installers download the release binary, verify its SHA-256 against the
+published `SHA256SUMS`, and refuse to install on a mismatch.
 
 ## Usage
 
@@ -75,9 +87,11 @@ downstream system in one go.
 - opens every file with its real reader — `.xlsx`/`.xlsm` via
   `excelize`, `.csv`/`.txt` with robust separator detection, legacy and
   unknown with a refusal
-- converts to a single normalized `.xlsx` (first sheet, headers honored)
-- **read-back check**: the clone is reopened and cell-grid vs counts are
-  compared to the source → `structural ok` or `refused`
+- converts to a normalized `.xlsx` (all sheets kept for workbooks, with row
+  totals reported across every readable sheet — never just the first)
+- **read-back check**: the clone is reopened and its grid compared to the
+  source → `structural ok` or `refused`
+- skips Excel `~$` lock files, hidden files, and its own previous clones
 - refuses `.xls`, `.xlsb`, `.ods`, XML, HTML with actionable advice
   ("re-save as .xlsx in the source app") — surfaced, never silently dropped
 

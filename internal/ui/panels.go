@@ -10,19 +10,23 @@ import (
 
 // ledger (assurance) + closing report + statusbar.
 
+// maxLedgerRows caps how many rows the scrolling ledger shows before folding
+// into an ellipsis.
+const maxLedgerRows = 40
+
 func (m Model) ledgerPanel(pr palette) string {
 	var b strings.Builder
 	b.WriteString(panelHead(pr, "assurance ledger", fmt.Sprintf("%d rows", len(m.jobs))))
 	// header
 	cols := []string{"R", "File", "Sh", "Rows", "Cols", "Style", "Verify", "Sec"}
-	roww := []int{3, 22, 5, 10, 7, 10, 8, 6}
+	roww := []int{3, 24, 5, 14, 7, 10, 8, 6}
 	hdr := make([]string, len(cols))
 	for i, h := range cols {
 		hdr[i] = lipgloss.NewStyle().Foreground(lipgloss.Color(pr.dim)).Render(pad(h, roww[i]))
 	}
 	b.WriteString("\n" + strings.Join(hdr, ""))
 	for i, jb := range m.jobs {
-		if i > 40 {
+		if i > maxLedgerRows {
 			b.WriteString("\n  …")
 			break
 		}
@@ -53,8 +57,6 @@ func glyph(jb engine.Job, pr palette) (string, string) {
 	}
 	return lipgloss.NewStyle().Foreground(lipgloss.Color(pr.ok)).Render("✓"), pr.ok
 }
-
-func (m Model) ledgerHead(pr palette, s string) string { return panelHead(pr, "assurance ledger", s) }
 
 func (m Model) reportPanel(pr palette) string {
 	if !m.done {
@@ -92,5 +94,3 @@ func statusbar(m Model, pr palette) string {
 		"q quit · t theme · r rerun · ? help"))
 	return b.String()
 }
-
-func progressBarPct(pct float64) string { return progressBar(pct) }

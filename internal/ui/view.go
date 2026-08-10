@@ -11,6 +11,9 @@ import (
 const blockFull = "█"
 const blockEmpty = "░"
 
+// progressBarSegments is how many cells the work progress bar renders.
+const progressBarSegments = 26
+
 func (m Model) frame(pr palette) string {
 	var b strings.Builder
 	b.WriteString(banner(pr))
@@ -30,14 +33,6 @@ func banner(pr palette) string {
 	title := s.Render("fixxl")
 	sub := lipgloss.NewStyle().Foreground(lipgloss.Color(pr.dim)).Render("scan · clone · assure")
 	return title + "  " + sub
-}
-
-func tip(pr palette, tips []string, i int) string {
-	idx := i % len(tips)
-	label := lipgloss.NewStyle().Foreground(lipgloss.Color(pr.accent)).Render("ti")
-	txt := lipgloss.NewStyle().Foreground(lipgloss.Color(pr.fg)).Render(tips[idx])
-	cnt := lipgloss.NewStyle().Foreground(lipgloss.Color(pr.dim)).Render(fmt.Sprintf("%d/%d", idx+1, len(tips)))
-	return label + "  " + txt + "  " + cnt
 }
 
 func (m Model) currentJob() *engine.Job {
@@ -109,14 +104,9 @@ func panelHead(pr palette, title, right string) string {
 	return h
 }
 
-func panelHeadCore(pr palette, title, right string) string {
-	return panelHead(pr, title, right)
-}
-
 func progressBar(pct float64) string {
-	const n = 26
-	full := int(pct / 100 * n)
-	return strings.Repeat(blockFull, full) + strings.Repeat(blockEmpty, n-full)
+	full := int(pct / 100 * progressBarSegments)
+	return strings.Repeat(blockFull, full) + strings.Repeat(blockEmpty, progressBarSegments-full)
 }
 
 func statusOf(m Model) string {

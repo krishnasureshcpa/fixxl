@@ -30,12 +30,28 @@ esac
 
 # --- resolve latest to a concrete tag ------------------------------------------------
 if [ "$VERSION" = "latest" ]; then
-  VERSION="$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" \
-    | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p')"
+  meta="$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest")" || { echo "fixxl: cannot reach GitHub API" >&2; exit 1; }
+  if command -v jq >/dev/null 2>&1; then
+    VERSION="$(printf '%s' "$meta" | jq -r '.tag_name')"; else
+    VERSION="$(printf '%s' "$meta" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n1)"
+  fi
+  [ -n "$VERSION" ] || { echo "fixxl: could not resolve latest release" >&2; exit 1; }
 fi
 
 asset="fixxl-$os-$arch"
 url="$BASE/$VERSION/$asset"
+
+# Prefer shasum (macOS/Git) and fall back to sha256sum (GNU coreutils).
+sumwrap() {
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$1" | awk '{print $1}'
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" | awk '{print $1}'
+  else
+    echo "fixxl: need shasum or sha256sum" >&2
+    exit 1
+  fi
+}
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
@@ -48,7 +64,7 @@ curl -fsSL -o "$tmp/SHA256SUMS" "$BASE/$VERSION/SHA256SUMS"
 
 want="$(awk -v f="$asset" '$2==f {print $1}' "$tmp/SHA256SUMS")"
 [ -n "$want" ] || { echo "fixxl: no checksum for $asset" >&2; exit 1; }
-got="$(shasum -a 256 "$tmp/$asset" | awk '{print $1}')"
+got="$(sumwrap "$tmp/$asset")"
 [ "$got" = "$want" ] || { echo "fixxl: checksum mismatch — aborting" >&2; exit 1; }
 
 prefix="${FIXXL_PREFIX:-$HOME/.local/bin}"

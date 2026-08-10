@@ -378,9 +378,9 @@ body{
       audit:[ ["ok","5 sheets present · 924k × 18"],
               ["warn","31,284 numbers in Col L stored as text → coerced"],
               ["ok","parity passed · 924,132 × 18"] ],
-      remedy:[ {k:"cause", t:"31,284 numeric cells stored as text in Col L"},
-               {k:"action", t:"coerce text→number · re-type column L"},
-               {k:"outcome", t:"all 31,284 coerced · now summable"}] },
+      resolve:[ {k:"cause", t:"31,284 numeric cells stored as text in Col L"},
+                {k:"action", t:"coerce text→number · re-type column L"},
+                {k:"outcome", t:"all 31,284 coerced · now summable"}] },
     { name:"invoices_2026.xlsm",   sizes:"38M · 3 sheets",  sheets:"3", rows:"210,334", cols:"12", style:"intact",
       audit:[ ["ok","macros preserved · 3 sheets"],
               ["warn","mixed tel/fax masks in Col I"],
@@ -435,7 +435,7 @@ body{
   var LOG=[], idx=0, elapsed=0, last=null, spinIdx=0, running=true;
 
   function extOf(n){ return "."+n.split(".").pop(); }
-  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+  function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 
   function drawBlocks(f){
     var on=Math.round(f*BLOCKS), h="";
@@ -466,12 +466,12 @@ body{
       el.resolveStatus.textContent = "refused";
       return;
     }
-    if(!job.remedy && !job.resolve){
+    if(!job.resolve){
       el.resolve.innerHTML = "";
       el.resolveStatus.textContent = "—";
       return;
     }
-    var list = job.remedy || job.resolve;
+    var list = job.resolve;
     var shown = list.slice(0, Math.min(phase + 1, list.length));
     el.resolve.innerHTML = shown.map(function(r){
       if(r.k === "advice" && r.advice){
